@@ -1,6 +1,5 @@
-# Dynamic-LE-Morphing-Aerofoil-While-Pitching
-This repository describes and demonstrates the use of a User-Defined Function (UDF) compiled in Fluent Ansys (launched in a Visual Studio environment) to perform an unsteady computational fluid dynamics (CFD) study on dynamically morphing leading (LE) sections of an aerofoil while undergoing periodic pitching. 
-
+[UNDER CONSTRUCTION]
+This repository describes and demonstrates the use of a User-Defined Function (UDF) compiled in Fluent Ansys (launched in a Visual Studio environment) to perform an unsteady computational fluid dynamics (CFD) study on the dynamically morphing leading edge (LE) of an aerofoil while undergoing periodic pitching.
 This repository is inspired by https://github.com/chawkiabd/Dynamic-Morphing-Wing, building on this framework. This Repository uses a second-order polynomial (seen in [1]) to deform the aerofoil shape by introducing a harmonic function to control the deflection amplitude of the morphing LE section. This includes parameters such as frequency, amplitude, and location where morphing is implemented. A separate UDF is needed to control the periodic pitching motion using a zone motion approach, while the main UDF is needed to control morphing sections. 
 Geometry Requirements:
 Two zones, separated by an interface where the inner zone is centred at the pitching motion location (e.g. 0.25C). This will allow you to perfectly hook the zone to the UDF “XXX”. While the larger zone remains static. Aerofoil needs to be a 4-digit NACAXXXX with separated surface names (e.g. Upper, Lower, Blunt) to allow you to hook them after code completion. 
@@ -13,4 +12,13 @@ Initialise storing the node coordinates by hooking “XXX” UDF output run-on-d
 Hooking zone UDF “XXX” to your rotating zone domain and hooking your upper, lower, and blunt trailing-edge surfaces to their corresponding names.
 
 
+
+
+
 [1] Wang, R., Ma, X., Zhang, G., Ying, P. and Wang, X., 2023. Numerical simulation of continuous morphing wing with leading edge and trailing edge parabolic flaps. Journal of Aerospace Engineering, 36(5), p.04023051.
+
+
+
+
+
+

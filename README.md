@@ -1,4 +1,6 @@
 [UNDER CONSTRUCTION]
+
+
 This repository describes and demonstrates the use of a User-Defined Function (UDF) compiled in Fluent Ansys (launched in a Visual Studio environment) to perform an unsteady computational fluid dynamics (CFD) study on the dynamically morphing leading edge (LE) of an aerofoil while undergoing periodic pitching.
 This repository is inspired by https://github.com/chawkiabd/Dynamic-Morphing-Wing, building on this framework. This Repository uses a second-order polynomial (seen in [1]) to deform the aerofoil shape by introducing a harmonic function to control the deflection amplitude of the morphing LE section. This includes parameters such as frequency, amplitude, and location where morphing is implemented. A separate UDF is needed to control the periodic pitching motion using a zone motion approach, while the main UDF is needed to control morphing sections. 
 Geometry Requirements:

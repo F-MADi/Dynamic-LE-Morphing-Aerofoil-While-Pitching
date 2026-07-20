@@ -20,8 +20,13 @@ Initialise storing the node coordinates by hooking “XXX” UDF output run-on-d
 Hooking zone UDF “XXX” to your rotating zone domain and hooking your upper, lower, and blunt trailing-edge surfaces to their corresponding names.
 
 
+Published open-access paper linked to example UDF seen in: A computational study on the aerodynamic properties of a pitching aerofoil with a morphing leading edge section at high Reynolds numbers. https://doi.org/10.1016/j.ijheatfluidflow.2026.110531
+
 
 [1] Wang, R., Ma, X., Zhang, G., Ying, P. and Wang, X., 2023. Numerical simulation of continuous morphing wing with leading edge and trailing edge parabolic flaps. Journal of Aerospace Engineering, 36(5), p.04023051.
+
+
+Author: Fakhreddine Madi (Fakhreddine.Madi@uwe.ac.uk)
 
 
 

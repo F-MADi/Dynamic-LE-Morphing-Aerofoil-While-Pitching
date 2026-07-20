@@ -11,3 +11,6 @@ Allocate user-defined memory (12) to save grid node locations.
 Compile the downloaded .c file “XXXX” (not using the built-in compiler), and press Load.
 Initialise storing the node coordinates by hooking “XXX” UDF output run-on-demand and active (confirm by reading UI output the number of stored nodes)
 Hooking zone UDF “XXX” to your rotating zone domain and hooking your upper, lower, and blunt trailing-edge surfaces to their corresponding names.
+
+
+[1] Wang, R., Ma, X., Zhang, G., Ying, P. and Wang, X., 2023. Numerical simulation of continuous morphing wing with leading edge and trailing edge parabolic flaps. Journal of Aerospace Engineering, 36(5), p.04023051.

@@ -1,0 +1,27 @@
+#include "udf.h"
+#include <math.h>
+
+#define FREQ       13.5                   /* [Hz] */
+#define AMPLITUDE  (12 * M_PI / 180.0)   /* [rad] */
+
+DEFINE_ZONE_MOTION(fmotion, omega, axis, origin, velocity, time, dtime)
+{
+    /* 1) Use parentheses around the condition */
+    if (time > 0.1)
+    {
+        /* compute angular velocity after t = 1 s */
+        *omega = -AMPLITUDE
+                 * 2.0 * M_PI * FREQ
+                 * cos(2.0 * M_PI * (time - 0.1) * FREQ);
+    }
+    else
+    {
+        *omega = 0.0;
+    }
+
+    N3V_D(velocity,=, 0.0, 0.0, 0.0);    /* no translation */
+    N3V_D(origin,=,   0.13375, 0.0, 0.0);   /* rotation center */
+    N3V_D(axis,=,     0.0,  0.0, 1.0);   /* rotation about Z */
+
+    /* no return value needed in a void function */
+}

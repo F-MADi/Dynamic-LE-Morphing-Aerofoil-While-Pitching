@@ -1,0 +1,212 @@
+#include "udf.h"
+#include "math.h"
+
+/*------------------------------------------------------------
+ *  Constants for morphing and pitching (2D only)
+ *-----------------------------------------------------------*/
+#define Thick       0.12
+#define freq_le     13.5
+#define FTT         0.1
+#define chord       0.535
+#define W_le_deg    12
+#define x_s_le      0.13375
+#define yLE         0.0
+#define yc0         0.0
+#define AoA_deg    -9.97
+#define AoA_rad    (AoA_deg * M_PI / 180.0)
+#define x_center    0.13375
+#define y_center    0.0
+
+#define FTT_PITCHING   0.1
+#define Freq_Pitching  13.5
+#define PitchAmpDeg    12.0
+#define PitchAmpRad (PitchAmpDeg * M_PI / 180.0)
+#define phase_pitching_deg 0
+#define phase_pitching (phase_pitching_deg * M_PI / 180.0)
+
+#define GLOBAL_TO_LOCAL(xg, yg, xl, yl)                   \
+    {                                                     \
+        xl = (xg - x_center)*cos(AoA_rad) +               \
+             (yg - y_center)*sin(AoA_rad) + x_center;     \
+        yl = -(xg - x_center)*sin(AoA_rad) +              \
+              (yg - y_center)*cos(AoA_rad) + y_center;    \
+    }
+
+#define LOCAL_TO_GLOBAL(xl, yl, xg, yg)                   \
+    {                                                     \
+        xg = (xl - x_center)*cos(AoA_rad) -               \
+             (yl - y_center)*sin(AoA_rad) + x_center;     \
+        yg = (xl - x_center)*sin(AoA_rad) +               \
+             (yl - y_center)*cos(AoA_rad) + y_center;     \
+    }
+
+void rotate_about_center(real x, real y, real theta, real* xr, real* yr)
+{
+    real cos_t = cos(theta+AoA_rad);
+    real sin_t = sin(theta+AoA_rad);
+    *xr = cos_t * (x - x_center) - sin_t * (y - y_center) + x_center;
+    *yr = sin_t * (x - x_center) + cos_t * (y - y_center) + y_center;
+}
+
+DEFINE_EXECUTE_ON_LOADING(store_initial_coords, libname)
+{
+    Domain *domain = Get_Domain(1);
+    Thread *t;
+    cell_t  c;
+    Node*   v;
+    int     n;
+    real    xg, yg, xl, yl;
+    int     node_count = 0;
+
+    thread_loop_c(t, domain)
+    {
+        begin_c_loop(c, t)
+        {
+            c_node_loop(c, t, n)
+            {
+                v = C_NODE(c, t, n);
+
+                xg = NODE_X(v);
+                yg = NODE_Y(v);
+                GLOBAL_TO_LOCAL(xg, yg, xl, yl);
+
+                N_UDMI(v, 0) = xl;
+                N_UDMI(v, 1) = yl;
+
+                node_count++;
+            }
+        }
+        end_c_loop(c, t);
+    }
+
+    Message("\n[store_initial_coords] Stored initial coords for %d nodes (on loading %s).\n", node_count, libname);
+}
+
+DEFINE_GRID_MOTION(morphing_upper, domain, dt, time, dtime)
+{
+    Thread* tf = DT_THREAD(dt);
+    face_t f;
+    int n;
+    real tol_x = 1e-6;
+
+    SET_DEFORMING_THREAD_FLAG(THREAD_T0(tf));
+
+    begin_f_loop(f, tf)
+    {
+        f_node_loop(f, tf, n)
+        {
+            Node* node_p = F_NODE(f, tf, n);
+            real x_org = N_UDMI(node_p, 0);
+            real x_local, y_local;
+
+            if (time > FTT && x_org <= x_s_le + tol_x)
+            {
+                real x_norm = x_org / chord;
+                real thickness = 5 * chord * Thick *
+                    (0.2969 * sqrt(x_norm) - 0.1260 * x_norm - 0.3516 * pow(x_norm, 2) + 0.2843 * pow(x_norm, 3) - 0.1015 * pow(x_norm, 4));
+
+                real W_le = (W_le_deg * M_PI / 180.0) * sin(2 * M_PI * freq_le * (time - FTT) + phase_pitching);
+
+                real denom = sqrt(4 * pow(tan(W_le), 2) + 1) + asinh(2 * tan(W_le)) / (2 * tan(W_le));
+                real xi_p1 = 2 * sqrt(x_s_le * x_s_le + yLE * yLE) / denom * ((x_s_le - x_org) / x_s_le);
+                real eta_p1 = -xi_p1 * ((x_s_le - x_org) / x_s_le) * tan(W_le);
+
+                real phi1 = -atan(yLE / x_s_le);
+                real delta_yc = yc0 - yLE * (1 - (x_s_le - x_org) / x_s_le);
+
+                real xc_wang = x_s_le - xi_p1 * cos(phi1) + eta_p1 * sin(phi1) - delta_yc * sin(atan(2 * (x_s_le - x_org) / x_s_le * tan(W_le)));
+                real yc_wang = yLE + xi_p1 * sin(phi1) + eta_p1 * cos(phi1) + delta_yc * cos(atan(2 * (x_s_le - x_org) / x_s_le * tan(W_le)));
+
+                real cofp = 2 * sqrt(x_s_le * x_s_le + yLE * yLE) / denom;
+                real dyc_dx = cofp * (tan(W_le) / (x_s_le * x_s_le)) * 2 * (x_s_le - x_org);
+
+                //x_local = x_org;
+                //y_local = N_UDMI(node_p, 1);
+
+                x_local = xc_wang - (thickness / sqrt(1 + dyc_dx * dyc_dx)) * dyc_dx;
+                y_local = yc_wang + thickness / sqrt(1 + dyc_dx * dyc_dx);
+            }
+            else
+            {
+                x_local = x_org;
+                y_local = N_UDMI(node_p, 1);
+            }
+			if (time > FTT_PITCHING)
+			{
+			//real theta =  1.5 * (time - FTT);
+            real theta = -PitchAmpRad * sin(2 * M_PI * Freq_Pitching * (time - FTT));
+            real x_rot, y_rot;
+            rotate_about_center(x_local, y_local, theta, &x_rot, &y_rot);
+
+            NODE_X(node_p) = x_rot;
+            NODE_Y(node_p) = y_rot;
+			}
+        }
+    }
+    end_f_loop(f, tf);
+}
+
+DEFINE_GRID_MOTION(morphing_lower, domain, dt, time, dtime)
+{
+    Thread* tf = DT_THREAD(dt);
+    face_t f;
+    int n;
+    real tol_x = 1e-6;
+
+    SET_DEFORMING_THREAD_FLAG(THREAD_T0(tf));
+
+    begin_f_loop(f, tf)
+    {
+        f_node_loop(f, tf, n)
+        {
+            Node* node_p = F_NODE(f, tf, n);
+            real x_org = N_UDMI(node_p, 0);
+            real x_local, y_local;
+
+            if (time > FTT && x_org <= x_s_le + tol_x)
+            {
+                real x_norm = x_org / chord;
+                real thickness = 5 * chord * Thick *
+                    (0.2969 * sqrt(x_norm) - 0.1260 * x_norm - 0.3516 * pow(x_norm, 2) + 0.2843 * pow(x_norm, 3) - 0.1015 * pow(x_norm, 4));
+
+                real W_le = (W_le_deg * M_PI / 180.0) * sin(2 * M_PI * freq_le * (time - FTT) + phase_pitching);
+
+                real denom = sqrt(4 * pow(tan(W_le), 2) + 1) + asinh(2 * tan(W_le)) / (2 * tan(W_le));
+                real xi_p1 = 2 * sqrt(x_s_le * x_s_le + yLE * yLE) / denom * ((x_s_le - x_org) / x_s_le);
+                real eta_p1 = -xi_p1 * ((x_s_le - x_org) / x_s_le) * tan(W_le);
+
+                real phi1 = -atan(yLE / x_s_le);
+                real delta_yc = yc0 - yLE * (1 - (x_s_le - x_org) / x_s_le);
+
+                real xc_wang = x_s_le - xi_p1 * cos(phi1) + eta_p1 * sin(phi1) - delta_yc * sin(atan(2 * (x_s_le - x_org) / x_s_le * tan(W_le)));
+                real yc_wang = yLE + xi_p1 * sin(phi1) + eta_p1 * cos(phi1) + delta_yc * cos(atan(2 * (x_s_le - x_org) / x_s_le * tan(W_le)));
+
+                real cofp = 2 * sqrt(x_s_le * x_s_le + yLE * yLE) / denom;
+                real dyc_dx = cofp * (tan(W_le) / (x_s_le * x_s_le)) * 2 * (x_s_le - x_org);
+
+               x_local = xc_wang + (thickness / sqrt(1 + dyc_dx * dyc_dx)) * dyc_dx;
+               y_local = yc_wang - thickness / sqrt(1 + dyc_dx * dyc_dx);
+
+
+                //x_local = x_org;
+                //y_local = N_UDMI(node_p, 1);
+            }
+            else
+            {
+                x_local = x_org;
+                y_local = N_UDMI(node_p, 1);
+            }
+			if (time > FTT_PITCHING)
+			{
+			//real theta =  1.5 * (time - FTT);	
+            real theta = -PitchAmpRad * sin(2 * M_PI * Freq_Pitching * (time - FTT));
+            real x_rot, y_rot;
+            rotate_about_center(x_local, y_local, theta, &x_rot, &y_rot);
+
+            NODE_X(node_p) = x_rot;
+            NODE_Y(node_p) = y_rot;
+			}
+        }
+    }
+    end_f_loop(f, tf);
+}
